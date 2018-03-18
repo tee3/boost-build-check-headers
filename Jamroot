@@ -3,10 +3,11 @@ import check-headers ;
 
 path-constant root : . ;
 
-alias libx
+lib libx
   : # sources
+    $(root)/src/x/x.cpp
     $(root)/src/x/x.hpp
-    $(root)/src/x/internal_x.hpp
+    $(root)/src/x/internal_x.cpp
   : # requirements
     <include>$(root)/src
   : # default-build
@@ -21,4 +22,4 @@ alias libx
 #     <use>libx
 #   ;
 
-make xxx.cpp : $(root)/src/x/x.hpp : @check-headers.generate-translation-unit-for-single-header ;
+check-headers.check-headers libx ;
