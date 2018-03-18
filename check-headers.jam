@@ -1,0 +1,200 @@
+import testing ;
+import print ;
+#import generator ;
+import type ;
+
+type.register XXX ;
+
+class check-headers-generator : generator
+{
+  rule __init__ ( * : * )
+  {
+    generator.__init__ $(1) : $(2) : $(3) : $(4) : $(5) : $(6) : $(7) : $(8) : $(9) ;
+  }
+
+  rule run ( project name ? : property-set : sources * )
+  {
+    local result ;
+
+    # generate a list of dependencies
+    local dependencies ;
+    for local s in $(sources)
+    {
+      if [ type.is-derived [ $(s).type ] LIB ]
+      {
+        dependencies += $(s) ;
+      }
+    }
+
+    # generate a list of C headers
+    local c-headers ;
+    for local s in $(sources)
+    {
+      if [ $(s).type ] = H
+      {
+        c-headers += $(s) ;
+      }
+    }
+
+    # generate a list of C++ headers
+    local c++-headers ;
+    for local s in $(sources)
+    {
+      if [ $(s).type ] = HPP
+      {
+        c++-headers += $(s) ;
+      }
+    }
+
+    # compile / link each C header in a separate C translation unit
+    for local h in $(c-headers)
+    {
+      local s-name = [ $(h).name ] ;
+      local s-basename = $(s-name:B:S=) ;
+      local s-source = compile_test_$(s-basename)_c.c ;
+
+      print.output $(s-source) ;
+
+      print.text "#include \"$(h)\"" : true ;
+      print.text "int main () { return 0; }" : true ;
+      print.text "" ;
+
+      #run $(s-source) : <use>$(dependencies) ;
+      #result += [ testing.make-test run : $(s-source) : : : <use>$(dependencies) ] ;
+    }
+
+    # compile / link each C and C++ header in a separate C++ translation unit
+    for local h in $(c++-headers) $(c-headers)
+    {
+      local s-name = [ $(h).name ] ;
+      local s-basename = $(s-name:B:S=) ;
+      local s-source = compile_test_$(s-basename)_cpp.cpp ;
+
+      print.output $(s-source) ;
+
+      print.text "#include \"$(h)\"" : true ;
+      print.text "int main () { return 0; }" : true ;
+      print.text "" ;
+
+      #run $(s-source) : <use>$(dependencies) ;
+      #result += [ testing.make-test run : $(s-source) : : : <use>$(dependencies) ] ;
+      #link $(s-source) : : : <use>$(dependencies) ;
+      make $(s-source) : $(s-name) ;
+    }
+
+    # compile / link all C headers in a single source using a C compiler
+    if $(c-headers)
+    {
+      local s-source = compile_test_all_c.c ;
+
+      print.output $(s-source) ;
+
+      for local h in $(c-headers)
+      {
+        print.text "#include \"$(h)\"" : true ;
+      }
+      print.text "int main () { return 0; }" : true ;
+      print.text "" ;
+
+      #run $(s-source) : <use>$(dependencies) ;
+      #result += [ testing.make-test run : $(s-source) : : : <use>$(dependencies) ] ;
+    }
+
+    # compile all C++ headers in a single source using a C++ compiler
+    if $(c++-headers)
+    {
+      local s-source = compile_test_all_cpp.cpp ;
+
+      print.output $(s-source) ;
+
+      for local h in $(c-headers) $(c++-headers)
+      {
+        print.text "#include \"$(h)\"" : true ;
+      }
+      print.text "int main () { return 0; }" : true ;
+      print.text "" ;
+
+      #run $(s-source) : <use>$(dependencies) ;
+      #result += [ testing.make-test run : $(s-source) : : : <use>$(dependencies) ] ;
+    }
+
+    # compile / link two C translation units that include all C headers
+    if $(c-headers)
+    {
+      local s0-source = compile_test_all_c_0.c ;
+      local s1-source = compile_test_all_c_1.c ;
+
+      print.output $(s0-source) ;
+
+      for local h in $(c-headers)
+      {
+        print.text "#include \"$(h)\"" : true ;
+      }
+      print.text "int main () { return 0; }" : true ;
+      print.text "" ;
+
+      print.output $(s1-source) ;
+
+      for local h in $(c-headers)
+      {
+        print.text "#include \"$(h)\"" : true ;
+      }
+      print.text "int main () { return 0; }" : true ;
+      print.text "" ;
+
+      #run $(s0-source) $(s1-source) : : : <use>$(dependencies) ;
+      #result += [ testing.make-test run : $(s0-source) $(s1-source) : : : <use>$(dependencies) ] ;
+    }
+
+    # compile / link two C++ translation units that include all C and C++ headers
+    if $(c-headers)
+    {
+      local s0-source = compile_test_all_cpp_0.cpp ;
+      local s1-source = compile_test_all_cpp_1.cpp ;
+
+      print.output $(s0-source) ;
+
+      for local h in $(c-headers) $(c++-headers)
+      {
+        print.text "#include \"$(h)\"" : true ;
+      }
+      print.text "int main () { return 0; }" : true ;
+      print.text "" ;
+
+      print.output $(s1-source) ;
+
+      for local h in $(c-headers) $(c++-headers)
+      {
+        print.text "#include \"$(h)\"" : true ;
+      }
+      print.text "int main () { return 0; }" : true ;
+      print.text "" ;
+
+      #run $(s0-source) $(s1-source) : : : <use>$(dependencies) ;
+      #result += [ testing.make-test run : $(s0-source) $(s1-source) : : : <use>$(dependencies) ] ;
+    }
+
+    #result = [ construct-result $(python) $(new-sources) : $(project) $(name) : $(property-set) ] ;
+
+  echo $(result) ;
+
+    return $(result) ;
+  }
+}
+
+generators.register [ new check-headers-generator check-headers.blah : : XXX ] ;
+
+# rule generate-translation-unit-for-single-header ( target : sources * : property-set * )
+# {
+#   echo $(target) ;
+#   echo $(sources) ;
+#   echo $(property-set) ;
+# 
+#   local header-name = [ $(sources[1]) ] ;
+# 
+#   print.output $(target) ;
+# 
+#   print.text "#include \"$(header-name)\"" : true ;
+#   print.text "int main () { return 0; }" : true ;
+#   print.text "" ;
+# } 

@@ -1,0 +1,24 @@
+import testing ;
+import check-headers ;
+
+path-constant root : . ;
+
+alias libx
+  : # sources
+    $(root)/src/x/x.hpp
+    $(root)/src/x/internal_x.hpp
+  : # requirements
+    <include>$(root)/src
+  : # default-build
+  : # usage-requirements
+    <include>$(root)/src
+  ;
+
+# check-headers.check-headers
+#   : # sources
+#     $(root)/src/x/x.hpp
+#   : # requirements
+#     <use>libx
+#   ;
+
+make xxx.cpp : $(root)/src/x/x.hpp : @check-headers.generate-translation-unit-for-single-header ;

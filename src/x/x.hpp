@@ -1,0 +1,7 @@
+namespace x
+{
+
+   void
+   hello ();
+
+}
