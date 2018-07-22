@@ -1,13 +1,16 @@
 import testing ;
-import check-headers ;
+import generate ;
+import print ;
+import type ;
 
 path-constant root : . ;
 
-lib libx
+alias libx
   : # sources
-    $(root)/src/x/x.cpp
+#    $(root)/src/x/x.cpp
     $(root)/src/x/x.hpp
-    $(root)/src/x/internal_x.cpp
+#    $(root)/src/x/internal_x.cpp
+    $(root)/src/x/internal_x.hpp
   : # requirements
     <include>$(root)/src
   : # default-build
@@ -22,4 +25,87 @@ lib libx
 #     <use>libx
 #   ;
 
-check-headers.check-headers libx ;
+generate check-headers : libx : <generating-rule>@generate-stuff ;
+
+rule generate-stuff ( project name : property-set : sources * )
+{
+  echo $(project) ;
+  echo $(name) ;
+  echo $(property-set) ;
+  echo $(sources) ;
+
+  local result ;
+
+  # generate a list of dependencies
+  local dependencies ;
+  for local s in $(sources)
+  {
+    if [ type.is-derived [ $(s).type ] LIB ]
+    {
+      dependencies += $(s) ;
+    }
+  }
+
+  # generate a list of C headers
+  local c-headers ;
+  for local s in $(sources)
+  {
+    if [ $(s).type ] = H
+    {
+      c-headers += $(s) ;
+    }
+  }
+
+  # generate a list of C++ headers
+  local c++-headers ;
+  for local s in $(sources)
+  {
+    if [ $(s).type ] = HPP
+    {
+      c++-headers += $(s) ;
+    }
+  }
+
+  # compile / link each C and C++ header in a separate C++ translation unit
+  for local h in $(c++-headers) $(c-headers)
+  {
+    local s-name = [ $(h).name ] ;
+    local s-basename = $(s-name:B:S=) ;
+    local s-source = compile_test_$(s-basename)_cpp.cpp ;
+
+    echo ------------------ ;
+    echo $(s-source) ;
+    echo $(s-name) ;
+    echo ------------------ ;
+
+    make $(s-source) : $(s-name) : @generate-c++-translation-unit-for-single-header ;
+#    compile $(s-source) ;
+  }
+
+  #result = [ construct-result $(python) $(new-sources) : $(project) $(name) : $(property-set) ] ;
+
+  echo $(result) ;
+
+  return $(result) ;
+}
+
+rule generate-c++-translation-unit-for-single-header ( targets * : sources * : properties * )
+{
+  echo $(targets) ;
+  echo $(sources) ;
+  echo $(properties) ;
+
+  local source = $(sources[1]) ;
+
+  local b = $(source:B:S=) ;
+  local s = compile_test_$(b)_cpp.cpp ;
+
+  echo $(b) ;
+  echo $(s) ;
+
+  print.output $(s) ;
+
+  print.text "#include \"$(source)\"" : true ;
+  print.text "int main () { return 0; }" : true ;
+  print.text "" ;
+} 
